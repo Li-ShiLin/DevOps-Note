@@ -1817,7 +1817,7 @@ Query OK, 0 rows affected (0.00 sec)
 mysql> show slave status \G;
 ```
 
-![image-20250216115655627](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216115655627.png)
+![image-20250216115655627](.\img\image-20250216115655627.png)
 
 13.在从数据库中开启主从同步
 
@@ -1836,7 +1836,7 @@ mysql> show slave status \G;
 
 
 
-![image-20250216115838052](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216115838052.png)
+![image-20250216115838052](.\img\image-20250216115838052.png)
 
 
 
@@ -1956,7 +1956,7 @@ default-character-set = utf8mb4
 
 ###### 1.2.1.1 哈希取余分区
 
-![image-20250216161601135](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216161601135.png)
+![image-20250216161601135](.\img\image-20250216161601135.png)
 
 2亿条记录就是2亿个k,v，单机不行必须要分布式多机，假设有3台机器构成一个集群，用户每次读写操作都是根据公式：hash(key) % N个机器台数，计算出哈希值，用来决定数据映射到哪一个节点上。
 
@@ -1978,33 +1978,33 @@ default-character-set = utf8mb4
 
 算法构建一致性哈希环（步骤一）：一致性哈希算法必然有个hash函数并按照算法产生hash值，这个算法的所有可能哈希值会构成一个全量集，这个集合可以成为一个hash空间[0,2^32-1]，这个是一个线性空间，但是在算法中，我们通过适当的逻辑控制将它首尾相连(0 = 2^32),这样让它逻辑上形成了一个环形空间。它也是按照使用取模的方法，前面笔记介绍的**节点取模法是对节点（服务器）的数量进行取模**。而**一致性Hash算法是对2^32取模**，简单来说，一致性Hash算法将整个哈希值空间组织成一个虚拟的圆环，如假设某哈希函数H的值空间为0-2^32-1（即哈希值是一个32位无符号整形），整个哈希环如下图：整个空间按顺时针方向组织，圆环的正上方的点代表0，0点右侧的第一个点代表1，以此类推，2、3、4、……直到2^32-1，也就是说0点左侧的第一个点代表2^32-1， 0和2^32-1在零点中方向重合，我们把这个由2^32个点组成的圆环称为Hash环
 
-![image-20250216163612604](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216163612604.png)
+![image-20250216163612604](.\img\image-20250216163612604.png)
 
 服务器IP节点映射（步骤二）：将集群中各个IP节点映射到环上的某一个位置。将各个服务器使用Hash进行一个哈希，**具体可以选择服务器的IP或主机名作为关键字进行哈希**，这样每台机器就能确定其在哈希环上的位置。假如4个节点NodeA、B、C、D，经过IP地址的哈希函数计算(hash(ip))，使用IP地址哈希后在环空间的位置如下
 
-![image-20250216164909956](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216164909956.png)
+![image-20250216164909956](.\img\image-20250216164909956.png)
 
 key落到服务器的落键规则（步骤三）：当需要存储一个kv键值对时，首先计算key的hash值，hash(key)，将这个key使用相同的函数Hash计算出哈希值并确定此数据在环上的位置，从此位置沿环顺时针“行走”，第一台遇到的服务器就是其应该定位到的服务器，并将该键值对存储在该节点上。如我们有Object A、Object B、Object C、Object D四个数据对象，经过哈希计算后，在环空间上的位置如下：根据一致性Hash算法，数据A会被定为到Node A上，B被定为到Node B上，C被定为到Node C上，D被定为到Node D上。
 
-![image-20250216165659050](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216165659050.png)
+![image-20250216165659050](.\img\image-20250216165659050.png)
 
 优点：
 
 - 一致性哈希算法的容错性：假设Node C宕机，可以看到此时对象A、B、D不会受到影响，只有C对象被重定位到Node D。一般的，在一致性Hash算法中，如果一台服务器不可用，则受影响的数据仅仅是此服务器到其环空间中前一台服务器（即沿着逆时针方向行走遇到的第一台服务器）之间数据，其它不会受到影响。简单说，就是C挂了，受到影响的只是B、C之间的数据，并且这些数据会转移到D进行存储
 
-![image-20250216170204706](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216170204706.png)
+![image-20250216170204706](.\img\image-20250216170204706.png)
 
 
 
 - 一致性哈希算法的扩展性：数据量增加了，需要增加一台节点NodeX，X的位置在A和B之间，那收到影响的也就是A到X之间的数据，重新把A到X的数据录入到X上即可，不会导致hash取余全部数据重新洗牌。
 
-![image-20250216170249368](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216170249368.png)
+![image-20250216170249368](.\img\image-20250216170249368.png)
 
 缺点：
 
 - 一致性哈希算法的数据倾斜问题：Hash环的数据倾斜问题。一致性Hash算法在服务节点太少时，容易因为节点分布不均匀而造成数据倾斜（被缓存的对象大部分集中缓存在某一台服务器上）问题，例如系统中只有两台服务器：
 
-![image-20250216170414333](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216170414333.png)
+![image-20250216170414333](.\img\image-20250216170414333.png)
 
 总结：为了在节点数目发生改变时尽可能少的迁移数据，将所有的存储节点排列在首尾相接的Hash环上，每个key在计算Hash后会顺时针找到临近的存储节点存放。而当有节点加入或退出时仅影响该节点在Hash环上顺时针相邻的后续节点。  优点：加入和删除节点只影响哈希环中顺时针方向的相邻的节点，对其他节点无影响。缺点：数据的分布和节点的位置有关，因为这些节点不是均匀的分布在哈希环上的，所以数据在进行存储时达不到均匀分布的效果。
 
@@ -2012,13 +2012,13 @@ key落到服务器的落键规则（步骤三）：当需要存储一个kv键值
 
 哈希槽分区算法：哈希槽实质就是一个数组，数组[0,2^14 -1]形成hash slot空间。哈希槽分区可以解决一致性哈希算法的数据倾斜问题，解决均匀分配的问题。在数据和节点之间又加入了一层，把这层称为哈希槽（slot），用于管理数据和节点之间的关系，现在就相当于节点上放的是槽，槽里放的是数据。槽解决的是粒度问题，相当于把粒度变大了，这样便于数据移动。哈希解决的是映射问题，使用key的哈希值来计算所在的槽，便于数据分配
 
-![image-20250216171219027](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216171219027.png)
+![image-20250216171219027](.\img\image-20250216171219027.png)
 
 多少个hash槽？一个集群只能有16384个槽，编号0-16383（0-2^14-1）。这些槽会分配给集群中的所有主节点，分配策略没有要求。可以指定哪些编号的槽分配给哪个主节点。集群会记录节点和槽的对应关系。解决了节点和槽的关系后，接下来就需要对key求哈希值，然后对16384取余，余数是几key就落入对应的槽里。slot = CRC16(key) % 16384。以槽为单位移动数据，因为槽的数目是固定的，处理起来比较容易，这样数据移动问题就解决了
 
 哈希槽计算：Redis 集群中内置了 16384 个哈希槽，redis 会根据节点数量大致均等的将哈希槽映射到不同的节点。当需要在 Redis 集群中放置一个 key-value时，redis 先对 key 使用 crc16 算法算出一个结果，然后把结果对 16384 求余数，这样每个 key 都会对应一个编号在 0-16383 之间的哈希槽，也就是映射到某个节点上。如下代码，key之A 、B在Node2， key之C落在Node3上
 
-![image-20250216172417914](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216172417914.png)
+![image-20250216172417914](.\img\image-20250216172417914.png)
 
 ```java
 @Test
@@ -2035,11 +2035,11 @@ public void tests() {
 
 3主3从redis集群扩缩容配置案例架构说明：
 
-![image-20250216182122908](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216182122908.png)
+![image-20250216182122908](.\img\image-20250216182122908.png)
 
 
 
-![image-20250216191710686](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216191710686.png)
+![image-20250216191710686](.\img\image-20250216191710686.png)
 
 ###### ① 3主3从redis集群配置
 
@@ -2346,7 +2346,7 @@ root@c3Z:/data#
 
 主从容错切换迁移
 
-![image-20250216201213813](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250216201213813.png)
+![image-20250216201213813](.\img\image-20250216201213813.png)
 
 ```bash
 root@c3Z:~# docker ps
@@ -2429,9 +2429,9 @@ f6c916d7e4f929639eab0eec2a14625b3bf82de9 48.123.111.211:6385@16385 slave 31e05be
 
 
 
-![image-20250218210640058](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250218210640058.png)
+![image-20250218210640058](.\img\image-20250218210640058.png)
 
-![image-20250218211845192](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250218211845192.png)
+![image-20250218211845192](.\img\image-20250218211845192.png)
 
 
 
@@ -2735,7 +2735,7 @@ root@c3Z:/data#
 
 ###### ⑤ 主从缩容案例
 
-![image-20250219203227922](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250219203227922.png)
+![image-20250219203227922](.\img\image-20250219203227922.png)
 
 1.检查集群情况，获得6388的节点ID
 
@@ -2975,7 +2975,7 @@ Dockerfile官网：https://docs.docker.com/engine/reference/builder/
 
 
 
-![image-20250219214048411](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250219214048411.png)
+![image-20250219214048411](.\img\image-20250219214048411.png)
 
 
 
@@ -3018,7 +3018,7 @@ Dockerfile官网：https://docs.docker.com/engine/reference/builder/
 - Docker镜像，在用Dockerfile定义一个文件之后，docker build时会产生一个Docker镜像，当运行 Docker镜像时会真正开始提供服务;
 - Docker容器，容器是直接提供服务的。
 
-![image-20250219215839936](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250219215839936.png)
+![image-20250219215839936](.\img\image-20250219215839936.png)
 
 **AI扩展**：
 
@@ -3785,7 +3785,7 @@ CMD echo "success--------------ok"
 CMD /bin/bash
 ```
 
-![image-20250221003501346](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250221003501346.png)
+![image-20250221003501346](.\img\image-20250221003501346.png)
 
 2.构建
 
@@ -3800,7 +3800,7 @@ docker build   # Docker 镜像构建指令
 # docker build -t centosjava8:1.5 .
 ```
 
-![image-20250222110932050](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250222110932050.png)
+![image-20250222110932050](.\img\image-20250222110932050.png)
 
 3.运行
 
@@ -3834,7 +3834,7 @@ CMD echo "install inconfig cmd into ubuntu success--------------ok"
 CMD /bin/bash
 ```
 
-![image-20250222162423676](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250222162423676.png)
+![image-20250222162423676](.\img\image-20250222162423676.png)
 
 2.构建
 
@@ -3863,7 +3863,7 @@ CMD echo 'action is success'
 docker build .
 ```
 
-![image-20250222150739025](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250222150739025.png)
+![image-20250222150739025](.\img\image-20250222150739025.png)
 
 ```bash
 # 3.查看
@@ -3871,7 +3871,7 @@ docker image ls -f dangling=true
 # 命令结果
 ```
 
-![image-20250222150854594](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250222150854594.png)
+![image-20250222150854594](.\img\image-20250222150854594.png)
 
 ```bash
 # 4.删除
@@ -3879,7 +3879,7 @@ docker image ls -f dangling=true
 # 虚悬镜像已经失去存在价值，可以删除
 ```
 
-![image-20250222151647150](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250222151647150.png)
+![image-20250222151647150](.\img\image-20250222151647150.png)
 
 **AI扩展**：
 
@@ -4038,7 +4038,7 @@ return "服务端口号: "+"\t"+port+"\t"+UUID.randomUUID().toString();
 # docker_boot-0.0.1-SNAPSHOT.jar
 ```
 
-![image-20250222170319095](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250222170319095.png)
+![image-20250222170319095](.\img\image-20250222170319095.png)
 
 #### 3.2 dockerfile发布微服务部署到docker容器
 
@@ -4074,7 +4074,7 @@ docker build   # Docker 镜像构建指令
   .                    # 构建上下文路径（当前目录）
 ```
 
-![image-20250222170625997](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250222170625997.png)
+![image-20250222170625997](.\img\image-20250222170625997.png)
 
 3.构建镜像
 
@@ -4087,7 +4087,7 @@ docker build   # Docker 镜像构建指令
   .                    # 构建上下文路径（当前目录）
 ```
 
-![image-20250222171041995](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250222171041995.png)
+![image-20250222171041995](.\img\image-20250222171041995.png)
 
 4.运行容器
 
@@ -4095,7 +4095,7 @@ docker build   # Docker 镜像构建指令
 # docker run -d -p 6001:6001 zzyy_docker:1.6
 ```
 
-![image-20250222172138412](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250222172138412.png)
+![image-20250222172138412](.\img\image-20250222172138412.png)
 
 5.测试容器上的微服务
 
@@ -4103,7 +4103,7 @@ docker build   # Docker 镜像构建指令
 # 192.168.111.163:6001/order/docker
 ```
 
-![image-20250222172729972](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250222172729972.png)
+![image-20250222172729972](.\img\image-20250222172729972.png)
 
 #### 3.3 `dockerfile`文件解读-AI
 
@@ -4861,7 +4861,7 @@ bridge模式：
   - 每个容器实例内部也有一块网卡，每个接口叫eth0
   - docker0上面的每个veth匹配某个容器实例内部的eth0，两两配对，一一匹配。通过上述，将宿主机上的所有容器都连接到这个内部网络上，两个容器在同一个网络下,会从这个网关下各自拿到分配的ip，此时两个容器的网络是互通的
 
-![image-20250223230626496](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250223230626496.png)
+![image-20250223230626496](.\img\image-20250223230626496.png)
 
 
 
@@ -5022,7 +5022,7 @@ root@c3Z:~# docker run -d -p 8082:8080   --name tomcat82 billygoo/tomcat8-jdk8
 
 
 
-![image-20250224215046874](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250224215046874.png)
+![image-20250224215046874](.\img\image-20250224215046874.png)
 
 ---
 
@@ -5138,7 +5138,7 @@ docker exec web2 ping web3  # 成功（若 web3 在同一自定义网络）
 
 host模式：直接使用宿主机的 `IP` 地址与外界进行通信，不再需要额外进行NAT 转换。容器将不会获得一个独立的Network Namespace， 而是和宿主机共用一个Network Namespace。容器将不会虚拟出自己的网卡而是使用宿主机的IP和端口
 
-![image-20250224221146896](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250224221146896.png)
+![image-20250224221146896](.\img\image-20250224221146896.png)
 
 
 
@@ -5272,7 +5272,7 @@ ip addr show  # 同上
 
 container⽹络模式：新建的容器和已经存在的一个容器共享一个网络ip配置而不是和宿主机共享。新创建的容器不会创建自己的网卡，配置自己的IP，而是和一个指定的容器共享IP、端口范围等。同样，两个容器除了网络方面，其他的如文件系统、进程列表等还是隔离的
 
-![image-20250306231112256](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250306231112256.png)
+![image-20250306231112256](.\img\image-20250306231112256.png)
 
 
 
@@ -5556,7 +5556,7 @@ Docker 运行的基本流程为：
 
 整体架构：
 
-![image-20250309203910298](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250309203910298.png)
+![image-20250309203910298](.\img\image-20250309203910298.png)
 
 
 
@@ -5570,7 +5570,7 @@ Docker 运行的基本流程为：
 
 Docker-compose容器编排：Docker-Compose是Docker官方的开源项目，负责实现对Docker容器集群的快速编排。Compose 是 Docker 公司推出的一个工具软件，可以管理多个 Docker 容器组成一个应用。你需要定义一个 YAML 格式的配置文件docker-compose.yml，写好多个容器之间的调用关系。然后，只要一个命令，就能同时启动/关闭这些容器
 
-![image-20250309204911554](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250309204911554.png)
+![image-20250309204911554](.\img\image-20250309204911554.png)
 
 Docker-compose作用：
 
@@ -6328,15 +6328,15 @@ root@c3Z:/mydocker#
 
 设置admin用户和密码后首次登陆
 
-![image-20250315180450019](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250315180450019.png)
+![image-20250315180450019](.\img\image-20250315180450019.png)
 
 选择local选项卡后本地docker详细信息展示
 
-![image-20250315180515236](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250315180515236.png)
+![image-20250315180515236](.\img\image-20250315180515236.png)
 
 上一步的图形展示，能想得起对应命令吗?
 
-![image-20250315180544432](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250315180544432.png)
+![image-20250315180544432](.\img\image-20250315180544432.png)
 
 #### 6.3 演示
 
@@ -6378,7 +6378,7 @@ docker stats命令的局限：
 
 容器监控3剑客：CAdvisor+InfluxDB+Granfana。CAdvisor监控收集+InfluxDB存储数据+Granfana展示图表
 
-![image-20250315183904590](C:\Users\22418\AppData\Roaming\Typora\typora-user-images\image-20250315183904590.png)
+![image-20250315183904590](.\img\image-20250315183904590.png)
 
 CAdvisor：
 
