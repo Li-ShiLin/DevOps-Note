@@ -54,7 +54,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1743234123275</updated>
-      <workItem from="1743234124073" duration="1580000" />
+      <workItem from="1743234124073" duration="1886000" />
     </task>
     <task id="LOCAL-00001" summary="删除图片">
       <option name="closed" value="true" />
@@ -75,19 +75,7 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State>
-              <option name="FILTERS">
-                <map>
-                  <entry key="branch">
-                    <value>
-                      <list>
-                        <option value="main" />
-                      </list>
-                    </value>
-                  </entry>
-                </map>
-              </option>
-            </State>
+            <State />
           </value>
         </entry>
       </map>
